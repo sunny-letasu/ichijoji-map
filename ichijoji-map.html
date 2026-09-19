@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>一乗寺</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Antique+Soft&family=Noto+Sans+JP:wght@300;400&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:#f0ece4}
+body{font-family:'Noto Sans JP',sans-serif}
+
+/* ── Map ── */
+#map{position:fixed;inset:0;z-index:1}
+
+/* warm tint over the map */
+#tint{
+  position:fixed;inset:0;z-index:2;
+  background:rgba(240,236,228,.10);
+  pointer-events:none;
+}
+
+/* ── Hide default Leaflet chrome ── */
+.leaflet-control-zoom{display:none!important}
+.leaflet-control-attribution{
+  font-size:8px!important;opacity:.25!important;
+  background:transparent!important;color:#888!important;
+}
+.leaflet-control-attribution a{color:#888!important}
+
+/* ── Word markers ── */
+.w{
+  font-family:'Zen Antique Soft',serif;
+  color:#1a1a14;
+  opacity:.45;
+  cursor:default;
+  white-space:nowrap;
+  letter-spacing:4px;
+  transition:opacity .5s,transform .5s;
+  transform:scale(1);
+  text-shadow:
+    0 0 20px rgba(240,236,228,.9),
+    0 0 40px rgba(240,236,228,.6);
+  user-select:none;
+  -webkit-user-select:none;
+}
+.w.on{
+  opacity:1;
+  transform:scale(1.12);
+  text-shadow:
+    0 0 20px rgba(240,236,228,.9),
+    0 0 40px rgba(240,236,228,.6),
+    0 1px 3px rgba(0,0,0,.08);
+}
+body.focus .w:not(.on){
+  opacity:.12;
+}
+
+/* ── Description bar ── */
+#bar{
+  position:fixed;bottom:0;left:0;right:0;z-index:100;
+  padding:22px 32px 26px;
+  background:linear-gradient(transparent 0%,rgba(26,26,20,.6) 25%,rgba(26,26,20,.82) 100%);
+  color:#F0E4C4;
+  transform:translateY(100%);
+  opacity:0;
+  transition:transform .5s cubic-bezier(.4,0,.2,1),opacity .5s;
+  display:flex;align-items:baseline;gap:24px;
+  pointer-events:none;
+}
+#bar.show{transform:translateY(0);opacity:1}
+#bar .bw{
+  font-family:'Zen Antique Soft',serif;
+  font-size:28px;letter-spacing:8px;flex-shrink:0;
+}
+#bar .bd{
+  font-size:14px;line-height:1.8;font-weight:300;
+  letter-spacing:.5px;color:rgba(240,228,196,.8);
+}
+
+/* ── Title watermark ── */
+#wm{
+  position:fixed;top:18px;left:22px;z-index:100;
+  pointer-events:none;transition:opacity .5s;
+}
+#wm .t1{
+  font-family:'Zen Antique Soft',serif;
+  font-size:16px;letter-spacing:10px;
+  color:rgba(26,26,20,.2);
+}
+#wm .t2{
+  font-size:9px;letter-spacing:2px;margin-top:3px;
+  color:rgba(26,26,20,.13);font-weight:300;
+}
+body.focus #wm{opacity:.3}
+
+/* ── Mobile ── */
+@media(max-width:600px){
+  .w{letter-spacing:2px}
+  #bar{padding:16px 20px 22px;flex-direction:column;gap:8px}
+  #bar .bw{font-size:22px;letter-spacing:5px}
+  #bar .bd{font-size:12px;line-height:1.7}
+  #wm{top:12px;left:14px}
+  #wm .t1{font-size:14px;letter-spacing:6px}
+  #wm .t2{font-size:8px}
+}
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+<div id="tint"></div>
+
+<div id="wm">
+  <div class="t1">一乗寺</div>
+  <div class="t2">京都 — 文化と味が交差する街</div>
+</div>
+
+<div id="bar">
+  <div class="bw" id="bw"></div>
+  <div class="bd" id="bd"></div>
+</div>
+
+<script>
+/* ─── Words ─── */
+var W = [
+  {t:'濃厚',la:35.0448,ln:135.7868,s:20,
+   d:'20軒以上がひしめくラーメン激戦区。この街のスープは、どれもとにかく「濃い」。'},
+  {t:'鶏',la:35.0502,ln:135.7888,s:24,
+   d:'スプーンが立つほどの鶏白湯。「もはやスープではない」と言われる一杯に、行列が絶えない。'},
+  {t:'屋台',la:35.0378,ln:135.7900,s:17,
+   d:'1971年、一台の屋台から始まった。全国200店舗「天下一品」の原点がここにある。'},
+  {t:'活字',la:35.0418,ln:135.7875,s:16,
+   d:'英紙が選んだ「世界で最も美しい書店」。テーマで並ぶ棚が、思いがけない一冊と引き合わせる。'},
+  {t:'決闘',la:35.0475,ln:135.7935,s:19,
+   d:'1604年、宮本武蔵が吉岡一門数十人と刃を交えた。現在の松は四代目。'},
+  {t:'剣',la:35.0503,ln:135.7955,s:26,
+   d:'「神仏に頼らず己の剣のみを信じる」——武蔵は神社で参拝をやめ、決闘の地へ向かった。'},
+  {t:'俳句',la:35.0435,ln:135.7953,s:18,
+   d:'芭蕉が語り、蕪村が庵を再興した。日本俳句史の二大巨匠が、この地で交差する。'},
+  {t:'添水',la:35.0488,ln:135.7978,s:17,
+   d:'カコーン——竹が石を打つ音が静寂を際立たせる。「ししおどし」の原型がここに。'},
+  {t:'詩',la:35.0478,ln:135.7995,s:28,
+   d:'中国の詩人36人の肖像を飾った山荘。武将を辞めた丈山が、90歳まで詩に没頭した隠棲の地。'},
+  {t:'紅葉',la:35.0510,ln:135.7998,s:20,
+   d:'苔の緑とカエデの赤が織りなす錦。秋の早朝、朝日に透ける一瞬の美。'},
+  {t:'苔',la:35.0522,ln:135.7978,s:24,
+   d:'地面をびっしり覆う緑の絨毯。家康が開いた学問所は、400年の時を経て苔庭に変わった。'},
+  {t:'狸',la:35.0530,ln:135.8015,s:22,
+   d:'250段の石段を登れば、無数のタヌキの焼き物が出迎える。がん封じの山寺。'},
+  {t:'火',la:35.0545,ln:135.7995,s:26,
+   d:'毎年7月、護摩の残り火の上を裸足で歩く。修験の厳しさと祈りの力を目の当たりにする。'},
+  {t:'羊羹',la:35.0458,ln:135.7920,s:16,
+   d:'1937年創業。でっち羊羹の素朴な甘さ。ラーメンだけがこの街の味ではない。'},
+  {t:'廃寺',la:35.0402,ln:135.7925,s:15,
+   d:'地名の由来となった寺は1335年に灰になった。700年後も、その名だけが残り続ける。'}
+];
+
+/* ─── Map ─── */
+var map = L.map('map',{
+  center:[35.0470,135.7945],
+  zoom:15,
+  zoomControl:false,
+  attributionControl:true,
+  zoomSnap:0.5,
+  maxZoom:18,
+  minZoom:14
+});
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',{
+  attribution:'&copy; OSM &copy; CARTO',
+  subdomains:'abcd',maxZoom:19
+}).addTo(map);
+
+/* subtle boundary */
+L.polygon([
+  [35.0540,135.7878],[35.0540,135.7928],[35.0528,135.8042],
+  [35.0448,135.8028],[35.0378,135.8012],
+  [35.0358,135.7948],[35.0358,135.7868],
+  [35.0432,135.7828],[35.0515,135.7855]
+],{
+  color:'rgba(160,140,110,0.15)',weight:1.5,
+  fill:true,fillColor:'rgba(160,140,110,0.02)',fillOpacity:1,
+  interactive:false
+}).addTo(map);
+
+/* ─── Place words ─── */
+var barEl=document.getElementById('bar');
+var bwEl=document.getElementById('bw');
+var bdEl=document.getElementById('bd');
+var curOn=null; // currently active .w element
+
+W.forEach(function(w){
+  var cw=w.s*1.15;
+  var tw=w.t.length*cw+(w.t.length-1)*4;
+  var icon=L.divIcon({
+    html:'<div class="w" style="font-size:'+w.s+'px">'+w.t+'</div>',
+    className:'',
+    iconSize:[tw+12,w.s+10],
+    iconAnchor:[(tw+12)/2,(w.s+10)/2]
+  });
+  var m=L.marker([w.la,w.ln],{icon:icon,interactive:true,keyboard:false}).addTo(map);
+
+  m.on('mouseover',function(){show(m,w)});
+  m.on('mouseout',function(){hide(m)});
+  m.on('click',function(e){
+    L.DomEvent.stopPropagation(e);
+    if(curOn===getW(m)){hide(m)} else {show(m,w)}
+  });
+});
+
+function getW(m){return m.getElement()?m.getElement().querySelector('.w'):null}
+
+function show(m,w){
+  var el=getW(m);if(!el)return;
+  if(curOn&&curOn!==el)curOn.classList.remove('on');
+  curOn=el;
+  el.classList.add('on');
+  document.body.classList.add('focus');
+  bwEl.textContent=w.t;
+  bdEl.textContent=w.d;
+  barEl.classList.add('show');
+}
+
+function hide(m){
+  var el=getW(m);if(!el)return;
+  el.classList.remove('on');
+  if(curOn===el){
+    curOn=null;
+    document.body.classList.remove('focus');
+    barEl.classList.remove('show');
+  }
+}
+
+/* tap away to dismiss (mobile) */
+map.on('click',function(){
+  if(curOn){
+    curOn.classList.remove('on');
+    curOn=null;
+    document.body.classList.remove('focus');
+    barEl.classList.remove('show');
+  }
+});
+</script>
+</body>
+</html>
