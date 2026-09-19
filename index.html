@@ -15,10 +15,16 @@ body{font-family:'Noto Sans JP',sans-serif}
 /* ── Map ── */
 #map{position:fixed;inset:0;z-index:1}
 
+/* Simplify tiles: desaturate + wash out labels */
+.leaflet-tile-pane{
+  filter:saturate(0) brightness(1.2) contrast(0.5);
+  opacity:.75;
+}
+
 /* warm tint over the map */
 #tint{
   position:fixed;inset:0;z-index:2;
-  background:rgba(240,236,228,.10);
+  background:rgba(240,236,228,.18);
   pointer-events:none;
 }
 
@@ -46,6 +52,11 @@ body{font-family:'Noto Sans JP',sans-serif}
   user-select:none;
   -webkit-user-select:none;
 }
+.w rt{
+  font-size:.45em;
+  letter-spacing:1px;
+  opacity:.7;
+}
 .w.on{
   opacity:1;
   transform:scale(1.12);
@@ -54,6 +65,7 @@ body{font-family:'Noto Sans JP',sans-serif}
     0 0 40px rgba(240,236,228,.6),
     0 1px 3px rgba(0,0,0,.08);
 }
+.w.on rt{opacity:1}
 body.focus .w:not(.on){
   opacity:.12;
 }
@@ -67,13 +79,17 @@ body.focus .w:not(.on){
   transform:translateY(100%);
   opacity:0;
   transition:transform .5s cubic-bezier(.4,0,.2,1),opacity .5s;
-  display:flex;align-items:baseline;gap:24px;
+  display:flex;align-items:center;gap:24px;
   pointer-events:none;
 }
 #bar.show{transform:translateY(0);opacity:1}
 #bar .bw{
   font-family:'Zen Antique Soft',serif;
   font-size:28px;letter-spacing:8px;flex-shrink:0;
+}
+#bar .bw rt{
+  font-size:.45em;
+  letter-spacing:1px;
 }
 #bar .bd{
   font-size:14px;line-height:1.8;font-weight:300;
@@ -89,6 +105,10 @@ body.focus .w:not(.on){
   font-family:'Zen Antique Soft',serif;
   font-size:16px;letter-spacing:10px;
   color:rgba(26,26,20,.2);
+}
+#wm .t1 rt{
+  font-size:.5em;
+  letter-spacing:2px;
 }
 #wm .t2{
   font-size:9px;letter-spacing:2px;margin-top:3px;
@@ -114,7 +134,7 @@ body.focus #wm{opacity:.3}
 <div id="tint"></div>
 
 <div id="wm">
-  <div class="t1">一乗寺</div>
+  <div class="t1"><ruby>一乗寺<rp>(</rp><rt>いちじょうじ</rt><rp>)</rp></ruby></div>
   <div class="t2">京都 — 文化と味が交差する街</div>
 </div>
 
@@ -124,54 +144,60 @@ body.focus #wm{opacity:.3}
 </div>
 
 <script>
+/* ─── Ruby helper ─── */
+function rb(t,r){
+  return '<ruby>'+t+'<rp>(</rp><rt>'+r+'</rt><rp>)</rp></ruby>';
+}
+
 /* ─── Words ─── */
-var W = [
-  {t:'濃厚',la:35.0448,ln:135.7868,s:20,
-   d:'20軒以上がひしめくラーメン激戦区。この街のスープは、どれもとにかく「濃い」。'},
-  {t:'鶏',la:35.0502,ln:135.7888,s:24,
-   d:'スプーンが立つほどの鶏白湯。「もはやスープではない」と言われる一杯に、行列が絶えない。'},
-  {t:'屋台',la:35.0378,ln:135.7900,s:17,
-   d:'1971年、一台の屋台から始まった。全国200店舗「天下一品」の原点がここにある。'},
-  {t:'活字',la:35.0418,ln:135.7875,s:16,
-   d:'英紙が選んだ「世界で最も美しい書店」。テーマで並ぶ棚が、思いがけない一冊と引き合わせる。'},
-  {t:'決闘',la:35.0475,ln:135.7935,s:19,
-   d:'1604年、宮本武蔵が吉岡一門数十人と刃を交えた。現在の松は四代目。'},
-  {t:'剣',la:35.0503,ln:135.7955,s:26,
-   d:'「神仏に頼らず己の剣のみを信じる」——武蔵は神社で参拝をやめ、決闘の地へ向かった。'},
-  {t:'俳句',la:35.0435,ln:135.7953,s:18,
-   d:'芭蕉が語り、蕪村が庵を再興した。日本俳句史の二大巨匠が、この地で交差する。'},
-  {t:'添水',la:35.0488,ln:135.7978,s:17,
-   d:'カコーン——竹が石を打つ音が静寂を際立たせる。「ししおどし」の原型がここに。'},
-  {t:'詩',la:35.0478,ln:135.7995,s:28,
-   d:'中国の詩人36人の肖像を飾った山荘。武将を辞めた丈山が、90歳まで詩に没頭した隠棲の地。'},
-  {t:'紅葉',la:35.0510,ln:135.7998,s:20,
-   d:'苔の緑とカエデの赤が織りなす錦。秋の早朝、朝日に透ける一瞬の美。'},
-  {t:'苔',la:35.0522,ln:135.7978,s:24,
-   d:'地面をびっしり覆う緑の絨毯。家康が開いた学問所は、400年の時を経て苔庭に変わった。'},
-  {t:'狸',la:35.0530,ln:135.8015,s:22,
-   d:'250段の石段を登れば、無数のタヌキの焼き物が出迎える。がん封じの山寺。'},
-  {t:'火',la:35.0545,ln:135.7995,s:26,
-   d:'毎年7月、護摩の残り火の上を裸足で歩く。修験の厳しさと祈りの力を目の当たりにする。'},
-  {t:'羊羹',la:35.0458,ln:135.7920,s:16,
-   d:'1937年創業。でっち羊羹の素朴な甘さ。ラーメンだけがこの街の味ではない。'},
-  {t:'廃寺',la:35.0402,ln:135.7925,s:15,
-   d:'地名の由来となった寺は1335年に灰になった。700年後も、その名だけが残り続ける。'}
+var W=[
+  {t:'濃厚',r:'のうこう',la:35.0448,ln:135.7868,s:20,
+   d:'20いじょうのラーメン屋さんがある街。どのお店のスープもとっても濃くておいしいよ。'},
+  {t:'鶏',r:'とり',la:35.0502,ln:135.7888,s:24,
+   d:'とりの骨をじっくり煮こんだ白いスープ。スプーンが立つほどドロドロ！行列ができる人気のラーメンだよ。'},
+  {t:'屋台',r:'やたい',la:35.0378,ln:135.7900,s:17,
+   d:'1971年、小さな屋台から始まったラーメン屋さん。今では全国に200店いじょうある「天下一品」の始まりの場所だよ。'},
+  {t:'活字',r:'かつじ',la:35.0418,ln:135.7875,s:16,
+   d:'イギリスの新聞で「世界でいちばん美しい本屋」にえらばれたお店。テーマごとに本がならんでいて、すてきな一冊に出会えるよ。'},
+  {t:'決闘',r:'けっとう',la:35.0475,ln:135.7935,s:19,
+   d:'1604年、宮本武蔵がたくさんの敵と戦った場所。今も松の木が残っているよ（4代目だけどね）。'},
+  {t:'剣',r:'けん',la:35.0503,ln:135.7955,s:26,
+   d:'「神さまにはたよらない。自分の腕だけを信じる」——武蔵は神社でお参りをやめて、戦いの場所へ向かったんだ。'},
+  {t:'俳句',r:'はいく',la:35.0435,ln:135.7953,s:18,
+   d:'松尾芭蕉と与謝蕪村——ふたりの有名な俳句の達人がかかわった場所だよ。'},
+  {t:'添水',r:'そうず',la:35.0488,ln:135.7978,s:17,
+   d:'カコーン——竹が石を打つあの音。庭にある「ししおどし」のもとになったしくみが、ここにあるよ。'},
+  {t:'詩',r:'し',la:35.0478,ln:135.7995,s:28,
+   d:'中国の詩人36人の絵をかざった山の中の別荘。武将をやめた丈山が、90歳まで詩を書き続けた場所だよ。'},
+  {t:'紅葉',r:'もみじ',la:35.0510,ln:135.7998,s:20,
+   d:'緑の苔と赤いもみじが作る美しい景色。秋の朝、太陽の光にすけるもみじは最高にきれいだよ。'},
+  {t:'苔',r:'こけ',la:35.0522,ln:135.7978,s:24,
+   d:'地面いっぱいに広がる緑のじゅうたん。徳川家康が作った学校が、400年たって苔の庭になったんだ。'},
+  {t:'狸',r:'たぬき',la:35.0530,ln:135.8015,s:22,
+   d:'250段の石段を登ると、たくさんのたぬきの焼き物がお出迎え。がんを治すお祈りで有名な山のお寺だよ。'},
+  {t:'火',r:'ひ',la:35.0545,ln:135.7995,s:26,
+   d:'毎年7月、お坊さんが燃える炭の上をはだしで歩くよ。見ているだけでドキドキする行事だよ。'},
+  {t:'羊羹',r:'ようかん',la:35.0458,ln:135.7920,s:16,
+   d:'1937年から続く和菓子屋さん。やさしい甘さのでっち羊羹がおいしいよ。ラーメンだけがこの街の名物じゃないんだ。'},
+  {t:'廃寺',r:'はいじ',la:35.0402,ln:135.7925,s:15,
+   d:'「一乗寺」という地名のもとになったお寺は、1335年に焼けてなくなった。700年たった今も名前だけが残っているよ。'}
 ];
 
 /* ─── Map ─── */
-var map = L.map('map',{
-  center:[35.0470,135.7945],
-  zoom:15,
+var map=L.map('map',{
+  center:[35.0480,135.7940],
+  zoom:16,
   zoomControl:false,
   attributionControl:true,
   zoomSnap:0.5,
   maxZoom:18,
-  minZoom:14
+  minZoom:15,
+  maxBounds:[[35.033,135.778],[35.060,135.810]]
 });
 
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',{
-  attribution:'&copy; OSM &copy; CARTO',
-  subdomains:'abcd',maxZoom:19
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',{
+  attribution:'&copy; Esri &copy; OSM',
+  maxZoom:19
 }).addTo(map);
 
 /* subtle boundary */
@@ -190,16 +216,16 @@ L.polygon([
 var barEl=document.getElementById('bar');
 var bwEl=document.getElementById('bw');
 var bdEl=document.getElementById('bd');
-var curOn=null; // currently active .w element
+var curOn=null;
 
 W.forEach(function(w){
   var cw=w.s*1.15;
   var tw=w.t.length*cw+(w.t.length-1)*4;
   var icon=L.divIcon({
-    html:'<div class="w" style="font-size:'+w.s+'px">'+w.t+'</div>',
+    html:'<div class="w" style="font-size:'+w.s+'px">'+rb(w.t,w.r)+'</div>',
     className:'',
-    iconSize:[tw+12,w.s+10],
-    iconAnchor:[(tw+12)/2,(w.s+10)/2]
+    iconSize:[tw+24,w.s+20],
+    iconAnchor:[(tw+24)/2,(w.s+20)/2]
   });
   var m=L.marker([w.la,w.ln],{icon:icon,interactive:true,keyboard:false}).addTo(map);
 
@@ -219,7 +245,7 @@ function show(m,w){
   curOn=el;
   el.classList.add('on');
   document.body.classList.add('focus');
-  bwEl.textContent=w.t;
+  bwEl.innerHTML=rb(w.t,w.r);
   bdEl.textContent=w.d;
   barEl.classList.add('show');
 }
