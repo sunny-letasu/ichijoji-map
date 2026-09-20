@@ -15,8 +15,8 @@ body{font-family:'Noto Sans JP',sans-serif}
 #map{position:fixed;inset:0;z-index:1}
 
 .leaflet-tile-pane{
-  filter:saturate(0) brightness(1.2) contrast(0.5);
-  opacity:.75;
+  filter:grayscale(1) brightness(1.45) contrast(0.3);
+  opacity:.6;
 }
 
 #tint{
@@ -34,7 +34,7 @@ body{font-family:'Noto Sans JP',sans-serif}
 
 .w{
   font-family:'Zen Antique Soft',serif;
-  color:#1a1a1a;
+  color:#000;
   opacity:0;
   cursor:default;
   white-space:nowrap;
@@ -47,7 +47,7 @@ body{font-family:'Noto Sans JP',sans-serif}
   user-select:none;
   -webkit-user-select:none;
 }
-.w.visible{opacity:.45}
+.w.visible{opacity:.75}
 .w rt{
   font-size:.45em;
   letter-spacing:1px;
@@ -63,7 +63,7 @@ body{font-family:'Noto Sans JP',sans-serif}
 }
 .w.on rt{opacity:1}
 body.focus .w:not(.on){
-  opacity:.10!important;
+  opacity:.18!important;
 }
 
 #bar{
@@ -178,8 +178,8 @@ var map=L.map('map',{
   maxBounds:[[CENTER[0]-0.008,CENTER[1]-0.010],[CENTER[0]+0.008,CENTER[1]+0.010]]
 });
 
-L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',{
-  attribution:'&copy; Esri &copy; OSM',maxZoom:19
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'&copy; OpenStreetMap',maxZoom:19
 }).addTo(map);
 
 /* subtle boundary */
