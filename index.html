@@ -156,7 +156,7 @@ var SPREAD_LNG=0.0040;
 var SIZES=[14,15,16,17,18,19,20,22,24,26];
 
 /* ── Helpers ── */
-function rb(t,r){return '<ruby>'+t+'<rp>(</rp><rt>'+r+'</rt><rp>)</rp></ruby>'}
+function rb(t,r){if(t===r)return t;return '<ruby>'+t+'<rp>(</rp><rt>'+r+'</rt><rp>)</rp></ruby>'}
 function rand(a,b){return a+Math.random()*(b-a)}
 function shuffle(arr){
   for(var i=arr.length-1;i>0;i--){
