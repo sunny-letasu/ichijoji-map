@@ -124,15 +124,17 @@ body.focus #wm{opacity:.3}
 
 /* park zone */
 .park-zone{
-  border:1.5px dashed rgba(80,130,80,.25)!important;
-  background:rgba(80,130,80,.06)!important;
+  border:2px dashed rgba(46,120,56,.70)!important;
+  background:rgba(46,120,56,.15)!important;
 }
 #park-label{
   position:fixed;z-index:50;
   pointer-events:none;
   font-family:'Zen Antique Soft',serif;
-  font-size:11px;letter-spacing:3px;
-  color:rgba(80,130,80,.35);
+  font-size:13px;letter-spacing:4px;
+  font-weight:400;
+  color:rgba(36,110,46,.6);
+  text-shadow:0 0 8px rgba(255,255,255,.7);
   text-align:center;
   white-space:nowrap;
 }
@@ -293,16 +295,16 @@ L.polygon([
   [35.0392,135.7880],[35.0395,135.7840],
   [35.0420,135.7830],[35.0445,135.7832]
 ],{
-  color:'rgba(160,140,110,0.12)',weight:1.5,
-  fill:true,fillColor:'rgba(160,140,110,0.02)',fillOpacity:1,
+  color:'rgba(140,115,75,0.35)',weight:2,dashArray:'10 6',
+  fill:true,fillColor:'rgba(140,115,75,0.04)',fillOpacity:1,
   interactive:false
 }).addTo(map);
 
 /* ── Park zone on map ── */
 L.polygon(PARK_BOUNDS,{
   className:'park-zone',
-  color:'rgba(80,130,80,.25)',weight:1.5,
-  fill:true,fillColor:'rgba(80,130,80,.06)',fillOpacity:1,
+  color:'rgba(46,120,56,.70)',weight:2,dashArray:'8 5',
+  fill:true,fillColor:'rgba(46,120,56,.15)',fillOpacity:1,
   interactive:false
 }).addTo(map);
 
