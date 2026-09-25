@@ -258,6 +258,35 @@ function inPark(lat,lng){
   if(lat<PARK_LAT_MIN||lat>PARK_LAT_MAX||lng<PARK_LNG_MIN||lng>PARK_LNG_MAX)return false;
   return pointInPoly(lat,lng,PARK_BOUNDS);
 }
+/* Check if a word's bounding box overlaps the park.
+   lat,lng = marker anchor (center of text).
+   charLen = number of characters, fontSize = px size.
+   We check the anchor plus the four corners of the text extent. */
+function wordOverlapsPark(lat,lng,charLen,fontSize){
+  /* approximate pixel-to-degree at zoom 17 around Kyoto */
+  var pxPerDegLat=1/(111320/Math.pow(2,17)/256);  /* ~1 degree lat in px */
+  var pxPerDegLng=1/(111320*Math.cos(lat*Math.PI/180)/Math.pow(2,17)/256);
+  /* word dimensions in pixels (with letter-spacing 4px) */
+  var cw=fontSize*1.15;
+  var tw=charLen*cw+(charLen-1)*4+24;
+  var th=fontSize+20;
+  /* add generous margin (40px buffer around the text) */
+  var margin=40;
+  var halfW=(tw/2+margin)/pxPerDegLng;  /* degrees lng */
+  var halfH=(th/2+margin)/pxPerDegLat;  /* degrees lat */
+  /* check corners and center against park */
+  var pts=[
+    [lat,lng],
+    [lat+halfH,lng-halfW],[lat+halfH,lng+halfW],
+    [lat-halfH,lng-halfW],[lat-halfH,lng+halfW],
+    [lat,lng-halfW],[lat,lng+halfW],
+    [lat+halfH,lng],[lat-halfH,lng]
+  ];
+  for(var i=0;i<pts.length;i++){
+    if(inPark(pts[i][0],pts[i][1]))return true;
+  }
+  return false;
+}
 
 
 /* ── Helpers ── */
@@ -334,19 +363,17 @@ var curOn=null;
 var markers=[];
 var sentenceTimer=null;
 
-/* ── Generate random positions (avoiding park) ── */
-function genPositions(n){
-  var pts=[];
-  var attempts=0;
-  while(pts.length<n&&attempts<n*20){
+/* ── Generate a random position for one word (avoiding park overlap) ── */
+function genPosition(charLen,fontSize){
+  for(var a=0;a<100;a++){
     var angle=Math.random()*Math.PI*2;
     var radius=Math.sqrt(Math.random());
     var lat=CENTER[0]+Math.cos(angle)*radius*SPREAD_LAT;
     var lng=CENTER[1]+Math.sin(angle)*radius*SPREAD_LNG;
-    attempts++;
-    if(!inPark(lat,lng)){pts.push([lat,lng])}
+    if(!wordOverlapsPark(lat,lng,charLen,fontSize))return [lat,lng];
   }
-  return pts;
+  /* fallback: place far from park */
+  return [CENTER[0]-SPREAD_LAT*0.8,CENTER[1]+SPREAD_LNG*0.8];
 }
 
 /* ── Place words on map ── */
@@ -367,10 +394,10 @@ function placeWords(){
   var localPicked=pick(LOCAL,nLocal).map(function(w){return {t:w.t,r:w.r,d:w.d,s:w.s,local:true}});
   var generalPicked=pick(GENERAL,nGeneral);
   var chosen=shuffle(localPicked.concat(generalPicked));
-  var positions=genPositions(SHOW_COUNT);
 
   chosen.forEach(function(w,i){
     var s=SIZES[Math.floor(Math.random()*SIZES.length)];
+    var pos=genPosition(w.t.length,s);
     var cw=s*1.15;
     var tw=w.t.length*cw+(w.t.length-1)*4;
     var cls=w.local?'w local':'w';
@@ -380,7 +407,7 @@ function placeWords(){
       iconSize:[tw+24,s+20],
       iconAnchor:[(tw+24)/2,(s+20)/2]
     });
-    var m=L.marker(positions[i],{icon:icon,interactive:true,keyboard:false,draggable:true}).addTo(map);
+    var m=L.marker(pos,{icon:icon,interactive:true,keyboard:false,draggable:true}).addTo(map);
     m._wordData=w;
 
     /* stagger fade-in */
